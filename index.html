@@ -293,6 +293,9 @@ function rowT(t){
     <button class="cam ${t.cam?"on":""}" onclick="tcam('${t.id}')">◉</button>
     <button class="x" onclick="tdel('${t.id}')">✕</button></div>`+
   (o?`<div class="ed">
+    <div class="lbl">Текст</div>
+    <textarea class="course" style="min-height:52px;margin-bottom:9px;font-size:15px"
+      onchange="tset('${t.id}','x',this.value)">${esc(t.x)}</textarea>
     <div class="lbl">Направление</div><div class="chips">${Object.entries(DIRS).map(([k,v])=>
       `<button class="chip ${t.d==k?"on":""}" onclick="tset('${t.id}','d','${k}')">${v.n}</button>`).join("")}</div>
     <div class="lbl">Блок дня</div><div class="chips">${BLOCKS.map(([k,n])=>
@@ -300,8 +303,18 @@ function rowT(t){
     <div class="lbl">Таймкод</div>
     <input type="time" value="${esc(t.at||"")}" onchange="tset('${t.id}','at',this.value)">
     <button class="chip" style="margin-left:6px" onclick="tset('${t.id}','at','')">убрать</button>
-    <div class="mv"><button onclick="toDay('${t.id}',1)">на завтра ▸</button>
-      <button onclick="toPick('${t.id}')">это заезд</button></div></div>`:"");
+    <div class="mv"><button onclick="tmove('${t.id}',-1)">↑ выше</button>
+      <button onclick="tmove('${t.id}',1)">↓ ниже</button>
+      <button onclick="toDay('${t.id}',1)">на завтра ▸</button>
+      <button onclick="toPick('${t.id}')">это заезд</button>
+      <button class="rm" onclick="tdel('${t.id}')">удалить</button></div></div>`:"");
+function tmove(id,n){
+  const l=tasks(cur),i=l.findIndex(t=>t.id==id),b=l[i].b;
+  const sib=l.map((t,j)=>({t,j})).filter(o=>o.t.b==b);
+  const k=sib.findIndex(o=>o.t.id==id),to=sib[k+n];
+  if(!to)return;
+  [l[i],l[to.j]]=[l[to.j],l[i]];touch();
+}
 }
 function tails(){
   const out=[],lim=pd(cur)-45*864e5;
