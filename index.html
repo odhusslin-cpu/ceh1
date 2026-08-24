@@ -267,6 +267,13 @@ function vDay(){
   if(S.inbox.length)h+=`<div class="inb"><h4>Инбокс · ${S.inbox.length}</h4>`+
     S.inbox.map(i=>`<div class="r"><span>${esc(i.x)}</span>
       <button onclick="unbox('${i.id}')">В день</button><button class="x" onclick="delbox('${i.id}')">✕</button></div>`).join("")+`</div>`;
+  const tl=tails();
+  if(tl.length)h+=`<div class="inb" style="border-color:var(--clay)">
+    <h4 style="color:var(--clay)">Хвосты · ${tl.length}</h4>
+    ${tl.map(o=>`<div class="r"><span>${esc(o.t.x)} <span class="loc">${fmt(o.d)}</span></span>
+      <button onclick="pull('${o.d}','${o.t.id}')">→ сюда</button>
+      <button class="x" onclick="drop('${o.d}','${o.t.id}')">✕</button></div>`).join("")}
+    <div class="mv"><button onclick="pullAll()">Перенести все</button></div></div>`;
   h+=BLOCKS.map(([k,n])=>{
     const g=list.filter(t=>t.b==k);
     if(!g.length&&k!="main")return"";
@@ -282,7 +289,7 @@ function rowT(t){
   const o=open1=="t"+t.id;
   return `<div class="t ${t.done?"done":""}">
     <button class="box" onclick="tdone('${t.id}')">${t.done?"✓":""}</button>${stamp(t.d)}
-    <button class="tx" onclick="open1=${o?"null":"'t"+t.id+"'"};render()">${t.at?`<span class="at">${esc(t.at)}</span>`:""}${esc(t.x)}</button>
+    <button class="tx" onclick="open1=${o?"null":"'t"+t.id+"'"};render()">${t.at?`<span class="at">${esc(t.at)}</span>`:""}${esc(t.x)}${t.mv?`<span class="loc" style="color:var(--clay)">↻${t.mv}</span>`:""}</button>
     <button class="cam ${t.cam?"on":""}" onclick="tcam('${t.id}')">◉</button>
     <button class="x" onclick="tdel('${t.id}')">✕</button></div>`+
   (o?`<div class="ed">
@@ -296,6 +303,22 @@ function rowT(t){
     <div class="mv"><button onclick="toDay('${t.id}',1)">на завтра ▸</button>
       <button onclick="toPick('${t.id}')">это заезд</button></div></div>`:"");
 }
+function tails(){
+  const out=[],lim=pd(cur)-45*864e5;
+  Object.keys(S.tasks).forEach(d=>{
+    if(d>=cur||pd(d)<lim)return;
+    (S.tasks[d]||[]).forEach(t=>{if(!t.done)out.push({d,t})})});
+  return out.sort((a,b)=>a.d<b.d?-1:1);
+}
+function pull(d,id){
+  const t=(S.tasks[d]||[]).find(x=>x.id==id);if(!t)return;
+  S.tasks[d]=S.tasks[d].filter(x=>x.id!=id);
+  t.mv=(t.mv||0)+1;t.at="";tasks(cur).push(t);touch();
+}
+function pullAll(){tails().forEach(o=>{
+  S.tasks[o.d]=S.tasks[o.d].filter(x=>x.id!=o.t.id);
+  o.t.mv=(o.t.mv||0)+1;o.t.at="";tasks(cur).push(o.t)});touch()}
+function drop(d,id){S.tasks[d]=(S.tasks[d]||[]).filter(x=>x.id!=id);touch()}
 function tdone(id){const t=tasks(cur).find(t=>t.id==id);t.done=!t.done;touch()}
 function tcam(id){const t=tasks(cur).find(t=>t.id==id);t.cam=!t.cam;touch()}
 function tdel(id){S.tasks[cur]=tasks(cur).filter(t=>t.id!=id);open1=null;touch()}
