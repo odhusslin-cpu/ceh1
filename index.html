@@ -69,6 +69,10 @@ h2.sec:after{content:"";flex:1;height:1px;background:var(--line)}
 .t{display:flex;gap:9px;align-items:flex-start;padding:9px 10px;background:var(--panel);border:1px solid var(--line);
   border-radius:11px;margin-bottom:5px}
 .t.done{opacity:.38}.t.done .tx{text-decoration:line-through}
+.t{transition:transform .13s ease}
+.t.drag{transition:none;border-color:var(--brass);box-shadow:0 10px 24px rgba(0,0,0,.5);position:relative;z-index:5;opacity:.96}
+.grip{touch-action:none;background:none;border:0;color:#4A515C;font-size:15px;line-height:1;padding:2px 1px 2px 5px;flex:none;letter-spacing:-1px}
+.t.drag .grip{color:var(--brass)}
 .box{width:21px;height:21px;flex:none;border-radius:7px;border:1.5px solid var(--line);background:none;color:var(--wax);font-size:12px;padding:0}
 .t.done .box{background:var(--wax);border-color:var(--wax);color:#15181D}
 .tx{flex:1;min-width:0;font-size:15px;word-break:break-word;text-align:left;background:none;border:0;color:inherit;padding:0}
@@ -287,11 +291,13 @@ function vDay(){
 }
 function rowT(t){
   const o=open1=="t"+t.id;
-  return `<div class="t ${t.done?"done":""}">
+  return `<div class="t ${t.done?"done":""}" data-id="${t.id}" data-b="${t.b}">
     <button class="box" onclick="tdone('${t.id}')">${t.done?"✓":""}</button>${stamp(t.d)}
     <button class="tx" onclick="open1=${o?"null":"'t"+t.id+"'"};render()">${t.at?`<span class="at">${esc(t.at)}</span>`:""}${esc(t.x)}${t.mv?`<span class="loc" style="color:var(--clay)">↻${t.mv}</span>`:""}</button>
     <button class="cam ${t.cam?"on":""}" onclick="tcam('${t.id}')">◉</button>
-    <button class="x" onclick="tdel('${t.id}')">✕</button></div>`+
+    <button class="x" onclick="tdel('${t.id}')">✕</button>
+    <button class="grip" onpointerdown="gdown(event)" onpointermove="gmove(event)"
+      onpointerup="gend()" onpointercancel="gend()">☰</button></div>`+
   (o?`<div class="ed">
     <div class="lbl">Текст</div>
     <textarea class="course" style="min-height:52px;margin-bottom:9px;font-size:15px"
@@ -308,6 +314,41 @@ function rowT(t){
       <button onclick="toDay('${t.id}',1)">на завтра ▸</button>
       <button onclick="toPick('${t.id}')">это заезд</button>
       <button class="rm" onclick="tdel('${t.id}')">удалить</button></div></div>`:"");
+let DRAG=null;
+function gdown(e){
+  e.preventDefault();e.stopPropagation();
+  const row=e.target.closest(".t"),b=row.dataset.b;
+  const sib=[...document.querySelectorAll('.t[data-b="'+b+'"]')];
+  const i=sib.indexOf(row);
+  DRAG={b,row,sib,rects:sib.map(x=>x.getBoundingClientRect()),y0:e.clientY,i,to:i};
+  row.classList.add("drag");open1=null;
+  try{e.target.setPointerCapture(e.pointerId)}catch(_){}
+}
+function gmove(e){
+  if(!DRAG)return;e.preventDefault();
+  const dy=e.clientY-DRAG.y0,R=DRAG.rects,i=DRAG.i;
+  DRAG.row.style.transform="translateY("+dy+"px)";
+  const c=R[i].top+R[i].height/2+dy;
+  let to=0;R.forEach((r,j)=>{if(c>r.top+r.height/2)to=j});
+  DRAG.to=to;
+  const h=R[i].height+5;
+  DRAG.sib.forEach((el,j)=>{
+    if(j===i)return;let sh=0;
+    if(i<to&&j>i&&j<=to)sh=-h;
+    if(i>to&&j<i&&j>=to)sh=h;
+    el.style.transform="translateY("+sh+"px)";
+  });
+}
+function gend(){
+  if(!DRAG)return;
+  const {b,i,to}=DRAG;DRAG=null;
+  if(i===to){render();return}
+  const l=tasks(cur),slots=l.map((t,j)=>({t,j})).filter(o=>o.t.b===b);
+  const order=slots.map(o=>o.t),moved=order.splice(i,1)[0];
+  order.splice(to,0,moved);
+  slots.forEach((o,k)=>l[o.j]=order[k]);
+  touch();
+}
 function tmove(id,n){
   const l=tasks(cur),i=l.findIndex(t=>t.id==id),b=l[i].b;
   const sib=l.map((t,j)=>({t,j})).filter(o=>o.t.b==b);
